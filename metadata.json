@@ -1,0 +1,6 @@
+{
+  "name": "VoltGrid Global - Live Electricity Grid Observatory & Workload Dispatcher",
+  "description": "Real-time global and regional power grid telemetry (inspired by UK Grid Live) paired with a predictive spatial-temporal workload optimization engine to reduce power cost and carbon footprint.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
