@@ -3,7 +3,7 @@ import { DATABASE_SCHEMA_TABLES } from '../../data/schemaDefinitions.ts';
 import { DatabaseTableDefinition } from '../../types/user.ts';
 import { Database, Table, Key, FileCode, Check, Download, Layers } from 'lucide-react';
 
-export const DatabaseSchemaViewer: React.FC = () => {
+export const DatabaseSchemaViewer: React.FC<{ isDarkMode?: boolean }> = ({ isDarkMode = true }) => {
   const [selectedTable, setSelectedTable] = useState<DatabaseTableDefinition>(DATABASE_SCHEMA_TABLES[0]);
   const [activeTab, setActiveTab] = useState<'columns' | 'records' | 'ddl'>('columns');
   const [copiedSql, setCopiedSql] = useState(false);

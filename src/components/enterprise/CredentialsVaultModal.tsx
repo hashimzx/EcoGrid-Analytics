@@ -38,7 +38,7 @@ const INITIAL_CREDENTIALS: CredentialVaultEntry[] = [
   }
 ];
 
-export const CredentialsVaultModal: React.FC = () => {
+export const CredentialsVaultModal: React.FC<{ isDarkMode?: boolean }> = ({ isDarkMode = true }) => {
   const [credentials, setCredentials] = useState<CredentialVaultEntry[]>(INITIAL_CREDENTIALS);
   const [showAddForm, setShowAddForm] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);

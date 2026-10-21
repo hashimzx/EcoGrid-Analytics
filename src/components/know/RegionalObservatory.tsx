@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GridRegion, FuelGeneration } from '../../types/grid.ts';
 import { RadialFrequencyGauge } from './RadialFrequencyGauge.tsx';
+import { CountryEcogridMap } from './CountryEcogridMap.tsx';
 import { 
   formatCarbon, 
   formatCurrency, 
@@ -31,12 +32,15 @@ import {
   TrendingDown, 
   TrendingUp,
   Radio,
-  LineChart as LineChartIcon
+  LineChart as LineChartIcon,
+  MapPin,
+  Map
 } from 'lucide-react';
 
 interface RegionalObservatoryProps {
   region: GridRegion;
   allRegions: GridRegion[];
+  isDarkMode?: boolean;
   onSelectRegion: (id: string) => void;
   onNavigateToAct: (regionId: string) => void;
   onUpdateRegionMix?: (regionId: string, carbon: number, rating: GridRegion['carbonRating'], mix: FuelGeneration[]) => void;
@@ -45,6 +49,7 @@ interface RegionalObservatoryProps {
 export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
   region,
   allRegions,
+  isDarkMode = true,
   onSelectRegion,
   onNavigateToAct,
   onUpdateRegionMix,
@@ -75,7 +80,6 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
 
   const carbonInfo = formatCarbon(region.carbonIntensity);
   const nominalHz = region.nominalFrequencyHz;
-  const freqDeviation = region.systemFrequencyHz - nominalHz;
 
   // Total Clean Share
   const totalCleanMw = region.generationMix
@@ -87,15 +91,21 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Observatory Header & Region Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
+      <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border shadow-xl backdrop-blur-xl transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-[#161617]/90 border-white/[0.12] text-[#f5f5f7]' 
+          : 'bg-white/90 border-black/[0.08] text-[#1d1d1f]'
+      }`}>
         <div className="flex items-center gap-4">
-          <span className="text-4xl">{region.flag}</span>
+          <span className="text-4xl drop-shadow-sm">{region.flag}</span>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white">{region.name}</h1>
-              <span className="text-xs font-mono text-slate-400">({region.gridOperator})</span>
+              <h1 className="text-xl font-bold tracking-tight">{region.name}</h1>
+              <span className={`text-xs font-mono ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                ({region.gridOperator})
+              </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
+            <div className={`flex flex-wrap items-center gap-2 text-xs mt-1 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
               <span>Synchronous Grid: {region.continent}</span>
               <span aria-hidden="true">·</span>
               <span>Nominal: {nominalHz}.00 Hz</span>
@@ -111,7 +121,11 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
             <select
               value={region.id}
               onChange={(e) => onSelectRegion(e.target.value)}
-              className="appearance-none bg-slate-950 border border-slate-700 text-slate-200 text-xs font-medium pl-3 pr-8 py-2 rounded-lg cursor-pointer focus:outline-none focus:border-emerald-500"
+              className={`appearance-none text-xs font-medium pl-3 pr-8 py-2 rounded-full cursor-pointer focus:outline-none border transition-colors ${
+                isDarkMode 
+                  ? 'bg-[#1c1c1e] border-white/[0.12] text-[#f5f5f7] focus:border-cyan-500' 
+                  : 'bg-[#f5f5f7] border-black/[0.08] text-[#1d1d1f] focus:border-cyan-600'
+              }`}
               aria-label="Select Grid Region"
             >
               {allRegions.map(r => (
@@ -120,7 +134,7 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 opacity-60 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Official UK API Refresh button */}
@@ -128,7 +142,11 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
             <button
               onClick={handleFetchUkLive}
               disabled={isFetchingLive}
-              className="px-3 py-2 text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              className={`px-3 py-2 text-xs font-semibold rounded-full flex items-center gap-1.5 transition-all disabled:opacity-50 border ${
+                isDarkMode 
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+              }`}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFetchingLive ? 'animate-spin' : ''}`} />
               <span>{isFetchingLive ? 'Querying API...' : 'Fetch Live NESO API'}</span>
@@ -138,7 +156,11 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
           {/* Jump to Workload Optimizer (ACT) */}
           <button
             onClick={() => onNavigateToAct(region.id)}
-            className="px-4 py-2 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition-colors flex items-center gap-1.5"
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 shadow-sm active:scale-95 ${
+              isDarkMode 
+                ? 'bg-white text-black hover:bg-slate-200' 
+                : 'bg-black text-white hover:bg-slate-800'
+            }`}
           >
             <Zap className="w-3.5 h-3.5" />
             <span>Optimize Workload Here</span>
@@ -147,18 +169,42 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
       </div>
 
       {liveSuccessMessage && (
-        <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800 text-emerald-400 text-xs flex items-center gap-2 font-mono">
+        <div className={`p-3.5 rounded-2xl text-xs flex items-center gap-2 font-mono border ${
+          isDarkMode 
+            ? 'bg-emerald-950/40 border-emerald-800 text-emerald-400' 
+            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+        }`}>
           <CheckCircle className="w-4 h-4 shrink-0" />
           <span>{liveSuccessMessage}</span>
         </div>
       )}
 
-      {/* 4-Column Primary Telemetry Dashboard Strip (Inspired by ukgridlive.co.uk) */}
+      {/* ========================================================================= */}
+      {/* COUNTRY-SPECIFIC ECOGRID MAP WITH ANIMATED LIGHTING & 24H SCRUBBER */}
+      {/* (When Pakistan is selected, shows Pakistan map & Superpower.pk data; */}
+      {/*  When any other country is selected, shows their national ecogrid map) */}
+      {/* ========================================================================= */}
+      <section aria-label={`${region.country} National Ecogrid Map`}>
+        <CountryEcogridMap
+          countryId={region.id}
+          countryName={region.country}
+          flag={region.flag}
+          isDarkMode={isDarkMode}
+        />
+      </section>
+
+      {/* 4-Column Primary Telemetry Dashboard Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: System Frequency Dial (ukgridlive.co.uk authentic radial meter) */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="uppercase tracking-wider font-semibold">Grid Frequency</span>
+        {/* Metric 1: System Frequency Dial */}
+        <div className={`p-5 rounded-3xl border flex flex-col justify-between shadow-sm ${
+          isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+        }`}>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className={`uppercase tracking-wider font-semibold text-[10px] ${
+              isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
+            }`}>
+              Grid Frequency
+            </span>
             <span className="font-mono text-[11px] text-emerald-400 flex items-center gap-1">
               <Radio className="w-3 h-3" />
               <span>{nominalHz}.00 Hz Sync</span>
@@ -172,25 +218,35 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
         </div>
 
         {/* Metric 2: Total System Demand */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="uppercase tracking-wider font-semibold">Instantaneous Demand</span>
-            <span className="text-slate-400 font-mono text-[11px]">Capacity: {formatPower(region.peakCapacityMw)}</span>
+        <div className={`p-5 rounded-3xl border flex flex-col justify-between shadow-sm ${
+          isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+        }`}>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`uppercase tracking-wider font-semibold text-[10px] ${
+              isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
+            }`}>
+              Instantaneous Load
+            </span>
+            <span className={`font-mono text-[11px] ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              Cap: {formatPower(region.peakCapacityMw)}
+            </span>
           </div>
 
           <div className="my-3">
-            <div className="font-mono text-3xl font-bold text-white tabular-nums tracking-tight">
+            <div className="font-mono text-3xl font-bold tracking-tight text-cyan-400">
               {formatPower(region.currentDemandMw)}
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs">
-              <span className="text-slate-400">Load Factor:</span>
-              <span className="font-mono text-emerald-400">
+              <span className={isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}>Load Factor:</span>
+              <span className="font-mono text-emerald-400 font-semibold">
                 {Math.round((region.currentDemandMw / region.peakCapacityMw) * 100)}% of Peak
               </span>
             </div>
           </div>
 
-          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+          <div className={`w-full h-2 rounded-full overflow-hidden ${
+            isDarkMode ? 'bg-black/50 border border-white/[0.08]' : 'bg-slate-200 border border-black/[0.04]'
+          }`}>
             <div 
               className="h-full bg-cyan-400 rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, (region.currentDemandMw / region.peakCapacityMw) * 100)}%` }}
@@ -199,27 +255,37 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
         </div>
 
         {/* Metric 3: Carbon Intensity */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="uppercase tracking-wider font-semibold">Carbon Intensity</span>
+        <div className={`p-5 rounded-3xl border flex flex-col justify-between shadow-sm ${
+          isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+        }`}>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`uppercase tracking-wider font-semibold text-[10px] ${
+              isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
+            }`}>
+              Carbon Intensity
+            </span>
             <span className={`text-[11px] font-semibold ${carbonInfo.textColor}`}>
               {carbonInfo.ratingText}
             </span>
           </div>
 
           <div className="my-3">
-            <div className="font-mono text-3xl font-bold text-white tabular-nums tracking-tight flex items-baseline gap-2">
-              <span>{Math.round(region.carbonIntensity)}</span>
-              <span className="text-xs font-mono text-slate-400">gCO2/kWh</span>
+            <div className="font-mono text-3xl font-bold tracking-tight flex items-baseline gap-2">
+              <span className={region.carbonIntensity < 150 ? 'text-emerald-400' : region.carbonIntensity < 350 ? 'text-amber-400' : 'text-rose-400'}>
+                {Math.round(region.carbonIntensity)}
+              </span>
+              <span className={`text-xs font-mono ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                gCO2/kWh
+              </span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs">
-              <span className="text-slate-400">Low-Carbon Share:</span>
+              <span className={isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}>Low-Carbon Share:</span>
               <span className="font-mono text-emerald-400 font-semibold">{cleanShareComputed}%</span>
             </div>
           </div>
 
           {/* Color spectrum bar */}
-          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 flex">
+          <div className="w-full h-2 rounded-full overflow-hidden flex">
             <div className="h-full bg-emerald-500 w-1/4" />
             <div className="h-full bg-teal-500 w-1/4" />
             <div className="h-full bg-amber-500 w-1/4" />
@@ -228,25 +294,35 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
         </div>
 
         {/* Metric 4: Wholesale Electricity Price */}
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="uppercase tracking-wider font-semibold">Wholesale Price (Day-Ahead)</span>
-            <span className="font-mono text-slate-400 text-[11px]">Normalized</span>
+        <div className={`p-5 rounded-3xl border flex flex-col justify-between shadow-sm ${
+          isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+        }`}>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`uppercase tracking-wider font-semibold text-[10px] ${
+              isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
+            }`}>
+              Wholesale Tariff
+            </span>
+            <span className={`font-mono text-[11px] ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              Day-Ahead
+            </span>
           </div>
 
           <div className="my-3">
-            <div className="font-mono text-3xl font-bold text-white tabular-nums tracking-tight">
+            <div className="font-mono text-3xl font-bold tracking-tight">
               {formatCurrency(region.wholesalePricePerMwh, region.currencySymbol)}
-              <span className="text-xs font-mono text-slate-400 ml-1">/MWh</span>
+              <span className={`text-xs ml-1 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>/MWh</span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs font-mono">
               <span className="text-cyan-400">≈ ${region.priceInUsdPerMwh.toFixed(2)} USD</span>
-              <span className="text-slate-500">·</span>
-              <span className="text-slate-400">Arbitrage eligible</span>
+              <span className="opacity-40">·</span>
+              <span className={isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}>Arbitrage eligible</span>
             </div>
           </div>
 
-          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+          <div className={`w-full h-2 rounded-full overflow-hidden ${
+            isDarkMode ? 'bg-black/50 border border-white/[0.08]' : 'bg-slate-200 border border-black/[0.04]'
+          }`}>
             <div 
               className="h-full bg-amber-400 rounded-full"
               style={{ width: `${Math.min(100, (region.priceInUsdPerMwh / 120) * 100)}%` }}
@@ -257,22 +333,28 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
 
       {/* Main Dual-Column: Fuel Mix Breakdown & Interconnector Flows */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Generation Fuel Mix (Exact ukgridlive.co.uk styling) */}
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        {/* Left 2 Cols: Generation Fuel Mix */}
+        <div className={`lg:col-span-2 p-6 rounded-3xl border shadow-xl backdrop-blur-xl space-y-4 ${
+          isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+        }`}>
+          <div className="flex items-center justify-between pb-3 border-b border-current border-opacity-10">
             <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Generation Fuel Mix</h2>
-              <div className="text-xs text-slate-400 mt-0.5">Real-time dispatched power by primary generation source</div>
+              <h2 className="text-sm font-bold tracking-tight uppercase">Dispatched Fuel Mix</h2>
+              <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Real-time active megawatts dispatched by primary generation type
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-emerald-400">{cleanShareComputed}% Zero-Carbon</span>
-              <span className="text-slate-500">·</span>
-              <span className="text-slate-400">{100 - cleanShareComputed}% Thermal</span>
+              <span className="text-emerald-400 font-semibold">{cleanShareComputed}% Zero-Carbon</span>
+              <span className="opacity-30">·</span>
+              <span className={isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}>{100 - cleanShareComputed}% Thermal</span>
             </div>
           </div>
 
           {/* Stacked generation bar */}
-          <div className="h-6 w-full rounded-lg overflow-hidden flex bg-slate-950 border border-slate-800">
+          <div className={`h-4 w-full rounded-full overflow-hidden flex border ${
+            isDarkMode ? 'bg-slate-950 border-white/[0.08]' : 'bg-slate-200 border-black/[0.06]'
+          }`}>
             {region.generationMix.map((fuel) => {
               if (fuel.percentage <= 0) return null;
               return (
@@ -283,7 +365,7 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                     backgroundColor: fuel.color,
                   }}
                   title={`${fuel.label}: ${fuel.percentage}% (${formatPower(fuel.mw)})`}
-                  className="h-full transition-all duration-300 relative group"
+                  className="h-full transition-all duration-300"
                 />
               );
             })}
@@ -294,7 +376,11 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
             {region.generationMix.map((fuel) => (
               <div
                 key={fuel.fuel}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-colors"
+                className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                  isDarkMode 
+                    ? 'bg-[#1c1c1e]/70 border-white/[0.06] hover:border-white/[0.15]' 
+                    : 'bg-[#f5f5f7]/80 border-black/[0.05] hover:border-black/[0.12]'
+                }`}
               >
                 <div className="flex items-center gap-2.5">
                   <span
@@ -302,18 +388,18 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                     style={{ backgroundColor: fuel.color }}
                   />
                   <div>
-                    <div className="text-xs font-medium text-slate-200">{fuel.label}</div>
-                    <div className="text-[10px] text-slate-500">
+                    <div className="text-xs font-semibold">{fuel.label}</div>
+                    <div className={`text-[10px] ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
                       {fuel.isClean ? 'Clean / Low-Carbon' : 'Fossil Thermal'}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right font-mono">
-                  <div className="text-xs font-bold text-white tabular-nums">
+                  <div className="text-xs font-bold tabular-nums">
                     {formatPower(fuel.mw)}
                   </div>
-                  <div className="text-[10px] text-slate-400 tabular-nums">
+                  <div className={`text-[10px] tabular-nums ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
                     {formatPercentage(fuel.percentage)}
                   </div>
                 </div>
@@ -325,10 +411,14 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
         {/* Right 1 Col: Cross-Border Interconnector Flows & Grid Alerts */}
         <div className="space-y-4">
           {/* Interconnector Cables */}
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Interconnector Flows</h2>
-              <span className="text-[11px] font-mono text-slate-400">Net Imports/Exports</span>
+          <div className={`p-6 rounded-3xl border shadow-xl backdrop-blur-xl space-y-4 ${
+            isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+          }`}>
+            <div className="flex items-center justify-between pb-2 border-b border-current border-opacity-10">
+              <h2 className="text-sm font-bold tracking-tight uppercase">Interconnector Corridors</h2>
+              <span className={`text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Net Power Flows
+              </span>
             </div>
 
             {region.interconnectors.length > 0 ? (
@@ -338,11 +428,13 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                   return (
                     <div
                       key={cable.id}
-                      className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between text-xs"
+                      className={`p-3 rounded-2xl border flex items-center justify-between text-xs ${
+                        isDarkMode ? 'bg-[#1c1c1e]/70 border-white/[0.06]' : 'bg-[#f5f5f7]/80 border-black/[0.05]'
+                      }`}
                     >
                       <div>
-                        <div className="font-semibold text-slate-200">{cable.name}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
+                        <div className="font-semibold">{cable.name}</div>
+                        <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
                           {cable.fromRegion} → {cable.toRegion} (Max {formatPower(cable.capacityMw)})
                         </div>
                       </div>
@@ -354,7 +446,7 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                           {isImporting ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                           <span>{Math.abs(cable.flowMw)} MW</span>
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className={`text-[10px] ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
                           {isImporting ? 'Importing' : 'Exporting'}
                         </div>
                       </div>
@@ -363,15 +455,17 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                 })}
               </div>
             ) : (
-              <div className="text-xs text-slate-500 text-center py-6">
+              <div className={`text-xs text-center py-6 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
                 No active cross-border HVDC interconnector links for this synchronous region.
               </div>
             )}
           </div>
 
           {/* Active Grid System Alerts */}
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+          <div className={`p-6 rounded-3xl border shadow-xl backdrop-blur-xl space-y-3 ${
+            isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+          }`}>
+            <h2 className="text-sm font-bold tracking-tight uppercase flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <span>Grid Alerts & Margins</span>
             </h2>
@@ -379,17 +473,28 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
             {region.alerts.length > 0 ? (
               <div className="space-y-2">
                 {region.alerts.map(alert => (
-                  <div key={alert.id} className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs">
-                    <div className="font-semibold text-amber-300 flex items-center justify-between">
+                  <div 
+                    key={alert.id} 
+                    className={`p-3 rounded-2xl border text-xs ${
+                      isDarkMode ? 'bg-[#1c1c1e] border-white/[0.08]' : 'bg-[#f5f5f7] border-black/[0.06]'
+                    }`}
+                  >
+                    <div className="font-semibold text-amber-400 flex items-center justify-between">
                       <span>{alert.title}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">{alert.timestamp}</span>
+                      <span className={`text-[10px] font-mono ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                        {alert.timestamp}
+                      </span>
                     </div>
-                    <p className="text-slate-400 mt-1 leading-relaxed">{alert.message}</p>
+                    <p className={`mt-1 leading-relaxed ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                      {alert.message}
+                    </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-slate-400 p-3 rounded-lg bg-slate-950 border border-slate-800/80 flex items-center gap-2">
+              <div className={`text-xs p-3 rounded-2xl border flex items-center gap-2 ${
+                isDarkMode ? 'bg-[#1c1c1e] border-white/[0.08]' : 'bg-[#f5f5f7] border-black/[0.06]'
+              }`}>
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Operating margin normal. No generation deficit warnings active.</span>
               </div>
@@ -399,82 +504,104 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
       </div>
 
       {/* 24-Hour Historical & Real-Time Carbon Intensity Trend (Recharts Line Engine) */}
-      <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className={`p-6 sm:p-7 rounded-3xl border shadow-xl backdrop-blur-xl space-y-4 ${
+        isDarkMode ? 'bg-[#161617]/90 border-white/[0.12]' : 'bg-white/90 border-black/[0.08]'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-current border-opacity-10">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-sm font-bold tracking-tight uppercase flex items-center gap-2">
                 <LineChartIcon className="w-4 h-4 text-emerald-400" />
                 <span>24-Hour Carbon Intensity & Grid Telemetry Trend</span>
               </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                isDarkMode ? 'bg-white/10 text-white' : 'bg-black/5 text-black'
+              }`}>
                 {region.country} · {region.name}
               </span>
             </div>
-            <div className="text-xs text-slate-400 mt-1">
+            <div className={`text-xs mt-1 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
               Visualizing 24-hour historical progression and hourly carbon intensity fluctuations using Recharts
             </div>
           </div>
 
-          <div className="flex items-center p-1 bg-slate-950 rounded-lg border border-slate-800 text-xs">
+          <div className={`flex items-center p-1 rounded-full border text-xs ${
+            isDarkMode ? 'bg-[#1c1c1e] border-white/[0.08]' : 'bg-[#f5f5f7] border-black/[0.06]'
+          }`}>
             <button
               onClick={() => setActiveChartTab('carbon')}
-              className={`px-3 py-1 font-medium rounded-md transition-colors ${
-                activeChartTab === 'carbon' ? 'bg-emerald-500/20 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-1 rounded-full font-medium transition-all ${
+                activeChartTab === 'carbon' 
+                  ? 'bg-emerald-500/20 text-emerald-400 font-semibold' 
+                  : isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
               }`}
             >
-              Carbon Intensity (gCO2/kWh)
+              Carbon (gCO2)
             </button>
             <button
               onClick={() => setActiveChartTab('price')}
-              className={`px-3 py-1 font-medium rounded-md transition-colors ${
-                activeChartTab === 'price' ? 'bg-cyan-500/20 text-cyan-400 font-semibold' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-1 rounded-full font-medium transition-all ${
+                activeChartTab === 'price' 
+                  ? 'bg-cyan-500/20 text-cyan-400 font-semibold' 
+                  : isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
               }`}
             >
-              Wholesale Price ($/MWh)
+              Price ($)
             </button>
             <button
               onClick={() => setActiveChartTab('demand')}
-              className={`px-3 py-1 font-medium rounded-md transition-colors ${
-                activeChartTab === 'demand' ? 'bg-amber-500/20 text-amber-400 font-semibold' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-1 rounded-full font-medium transition-all ${
+                activeChartTab === 'demand' 
+                  ? 'bg-amber-500/20 text-amber-400 font-semibold' 
+                  : isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
               }`}
             >
-              System Demand (MW)
+              Demand (MW)
             </button>
           </div>
         </div>
 
         {/* 24-Hour Carbon Intensity Key Metrics Summary Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
+        <div className={`grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl border ${
+          isDarkMode ? 'bg-[#1c1c1e]/70 border-white/[0.06]' : 'bg-[#f5f5f7] border-black/[0.04]'
+        }`}>
           <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500">Current Carbon</div>
+            <div className={`text-[10px] uppercase font-mono tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              Current Carbon
+            </div>
             <div className="text-lg font-bold font-mono text-emerald-400 flex items-center gap-1.5">
               <span>{region.carbonIntensity}</span>
-              <span className="text-xs font-sans text-slate-400">gCO2/kWh</span>
+              <span className={`text-xs font-sans ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>gCO2/kWh</span>
             </div>
           </div>
 
           <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500">24h Cleanest Window</div>
+            <div className={`text-[10px] uppercase font-mono tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              24h Cleanest
+            </div>
             <div className="text-lg font-bold font-mono text-cyan-400 flex items-center gap-1.5">
               <span>{Math.min(...region.forecast24h.map(p => p.carbonIntensity))}</span>
-              <span className="text-xs font-sans text-slate-400">g (at {region.forecast24h.reduce((min, p) => p.carbonIntensity < min.carbonIntensity ? p : min, region.forecast24h[0]).timeLabel})</span>
+              <span className={`text-xs font-sans ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>g</span>
             </div>
           </div>
 
           <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500">24h Peak Carbon</div>
+            <div className={`text-[10px] uppercase font-mono tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              24h Peak Carbon
+            </div>
             <div className="text-lg font-bold font-mono text-amber-400 flex items-center gap-1.5">
               <span>{Math.max(...region.forecast24h.map(p => p.carbonIntensity))}</span>
-              <span className="text-xs font-sans text-slate-400">g (at {region.forecast24h.reduce((max, p) => p.carbonIntensity > max.carbonIntensity ? p : max, region.forecast24h[0]).timeLabel})</span>
+              <span className={`text-xs font-sans ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>g</span>
             </div>
           </div>
 
           <div className="space-y-0.5">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500">24h Mean Average</div>
-            <div className="text-lg font-bold font-mono text-slate-200 flex items-center gap-1.5">
+            <div className={`text-[10px] uppercase font-mono tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              24h Mean
+            </div>
+            <div className="text-lg font-bold font-mono flex items-center gap-1.5">
               <span>{Math.round(region.forecast24h.reduce((sum, p) => sum + p.carbonIntensity, 0) / (region.forecast24h.length || 1))}</span>
-              <span className="text-xs font-sans text-slate-400">gCO2/kWh</span>
+              <span className={`text-xs font-sans ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>gCO2/kWh</span>
             </div>
           </div>
         </div>
@@ -500,18 +627,22 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                 </linearGradient>
               </defs>
 
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke={isDarkMode ? '#27272a' : '#e4e4e7'} 
+                vertical={false} 
+              />
               <XAxis 
                 dataKey="time" 
-                stroke="#64748B" 
+                stroke={isDarkMode ? '#71717a' : '#a1a1aa'} 
                 fontSize={11} 
-                fontFamily="JetBrains Mono, monospace" 
+                fontFamily="SF Mono, monospace" 
                 tickLine={false} 
               />
               <YAxis 
-                stroke="#64748B" 
+                stroke={isDarkMode ? '#71717a' : '#a1a1aa'} 
                 fontSize={11} 
-                fontFamily="JetBrains Mono, monospace" 
+                fontFamily="SF Mono, monospace" 
                 tickLine={false}
                 unit={activeChartTab === 'carbon' ? 'g' : activeChartTab === 'price' ? '$' : 'MW'}
                 domain={['auto', 'auto']}
@@ -521,25 +652,29 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="p-3.5 rounded-xl bg-slate-950/95 border border-slate-700 shadow-2xl text-xs font-mono space-y-1.5 backdrop-blur-md">
-                        <div className="font-bold text-white pb-1.5 border-b border-slate-800 flex items-center justify-between gap-4">
-                          <span>Timeline: {label}</span>
-                          <span className="text-[10px] text-slate-400 font-sans">{region.country} · {region.name}</span>
+                      <div className={`p-4 rounded-2xl border shadow-2xl text-xs font-mono space-y-1.5 backdrop-blur-xl ${
+                        isDarkMode ? 'bg-[#1c1c1e]/95 border-white/[0.12] text-[#f5f5f7]' : 'bg-white/95 border-black/[0.08] text-[#1d1d1f]'
+                      }`}>
+                        <div className="font-bold pb-1.5 border-b border-current border-opacity-10 flex items-center justify-between gap-4">
+                          <span>Time: {label}</span>
+                          <span className={`text-[10px] font-sans ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                            {region.country} · {region.name}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between gap-4 text-emerald-400 pt-0.5">
-                          <span>Carbon Intensity:</span>
+                          <span>Carbon:</span>
                           <span className="font-bold">{data.carbon} gCO2/kWh</span>
                         </div>
                         <div className="flex items-center justify-between gap-4 text-cyan-400">
-                          <span>Wholesale Price:</span>
+                          <span>Price:</span>
                           <span className="font-bold">${data.price} / MWh</span>
                         </div>
                         <div className="flex items-center justify-between gap-4 text-indigo-400">
-                          <span>Clean Energy Share:</span>
+                          <span>Clean Share:</span>
                           <span className="font-bold">{data.renewable}%</span>
                         </div>
                         <div className="flex items-center justify-between gap-4 text-amber-400">
-                          <span>System Demand:</span>
+                          <span>Demand:</span>
                           <span className="font-bold">{formatPower(data.demand)}</span>
                         </div>
                       </div>
@@ -555,21 +690,21 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                     y={50} 
                     stroke="#10B981" 
                     strokeDasharray="4 4" 
-                    label={{ value: 'Net-Zero Green (<50g)', fill: '#10B981', fontSize: 10, position: 'insideTopLeft' }} 
+                    label={{ value: 'Clean (<50g)', fill: '#10B981', fontSize: 10, position: 'insideTopLeft' }} 
                   />
                   <ReferenceLine 
                     y={150} 
                     stroke="#F59E0B" 
                     strokeDasharray="4 4" 
-                    label={{ value: 'Moderate Grid (>150g)', fill: '#F59E0B', fontSize: 10, position: 'insideTopLeft' }} 
+                    label={{ value: 'Moderate (>150g)', fill: '#F59E0B', fontSize: 10, position: 'insideTopLeft' }} 
                   />
                   <Line
                     type="monotone"
                     dataKey="carbon"
-                    name="Carbon Intensity (gCO2/kWh)"
+                    name="Carbon Intensity"
                     stroke="url(#carbonLineGrad)"
                     strokeWidth={3}
-                    dot={{ r: 3.5, fill: '#10B981', strokeWidth: 1, stroke: '#022C22' }}
+                    dot={{ r: 3.5, fill: '#10B981', strokeWidth: 1, stroke: isDarkMode ? '#022C22' : '#ffffff' }}
                     activeDot={{ r: 7, fill: '#34D399', stroke: '#064E3B', strokeWidth: 2 }}
                     animationDuration={800}
                   />
@@ -580,10 +715,10 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                 <Line
                   type="monotone"
                   dataKey="price"
-                  name="Wholesale Price ($/MWh)"
+                  name="Wholesale Price"
                   stroke="#06B6D4"
                   strokeWidth={3}
-                  dot={{ r: 3.5, fill: '#06B6D4', strokeWidth: 1, stroke: '#083344' }}
+                  dot={{ r: 3.5, fill: '#06B6D4', strokeWidth: 1, stroke: isDarkMode ? '#083344' : '#ffffff' }}
                   activeDot={{ r: 7, fill: '#67E8F9', stroke: '#083344', strokeWidth: 2 }}
                   animationDuration={800}
                 />
@@ -593,10 +728,10 @@ export const RegionalObservatory: React.FC<RegionalObservatoryProps> = ({
                 <Line
                   type="monotone"
                   dataKey="demand"
-                  name="System Demand (MW)"
+                  name="System Demand"
                   stroke="#F59E0B"
                   strokeWidth={3}
-                  dot={{ r: 3.5, fill: '#F59E0B', strokeWidth: 1, stroke: '#451A03' }}
+                  dot={{ r: 3.5, fill: '#F59E0B', strokeWidth: 1, stroke: isDarkMode ? '#451A03' : '#ffffff' }}
                   activeDot={{ r: 7, fill: '#FCD34D', stroke: '#451A03', strokeWidth: 2 }}
                   animationDuration={800}
                 />

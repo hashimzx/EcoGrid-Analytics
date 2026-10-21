@@ -24,12 +24,14 @@ import {
 interface WorkloadOptimizerProps {
   regions: GridRegion[];
   preselectedRegionId?: string;
+  isDarkMode?: boolean;
   onOpenObservatory: (regionId: string) => void;
 }
 
 export const WorkloadOptimizer: React.FC<WorkloadOptimizerProps> = ({
   regions,
   preselectedRegionId,
+  isDarkMode = true,
   onOpenObservatory,
 }) => {
   // Active workload form state

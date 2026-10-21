@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GridRegion } from '../../types/grid.ts';
 import { formatCarbon, formatCurrency, formatFrequency, formatPower } from '../../utils/formatters.ts';
-import { Globe as GlobeIcon, Map as MapIcon, RotateCw, Play, Pause, Compass, Zap, ArrowRight } from 'lucide-react';
+import { Globe as GlobeIcon, RotateCw, Play, Pause, Zap, ArrowRight, Sun, Moon } from 'lucide-react';
 
 interface GlobeViewProps {
   regions: GridRegion[];
   selectedRegionId: string;
   metricView: 'carbon' | 'price' | 'clean';
+  isDarkMode?: boolean;
   onSelectRegion: (id: string) => void;
   onOpenObservatory: (id: string) => void;
 }
@@ -23,23 +24,29 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
   );
 }
 
-// Generate procedural procedural world canvas texture for Earth surface
-function createProceduralEarthTexture(): THREE.CanvasTexture {
+// Generate procedural world canvas texture for Earth surface
+function createProceduralEarthTexture(isDark: boolean): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
   canvas.height = 1024;
   const ctx = canvas.getContext('2d')!;
 
-  // Deep ocean gradient
+  // Ocean gradient
   const oceanGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  oceanGrad.addColorStop(0, '#040914');
-  oceanGrad.addColorStop(0.5, '#060F22');
-  oceanGrad.addColorStop(1, '#030712');
+  if (isDark) {
+    oceanGrad.addColorStop(0, '#040914');
+    oceanGrad.addColorStop(0.5, '#060F22');
+    oceanGrad.addColorStop(1, '#030712');
+  } else {
+    oceanGrad.addColorStop(0, '#e2e8f0');
+    oceanGrad.addColorStop(0.5, '#cbd5e1');
+    oceanGrad.addColorStop(1, '#94a3b8');
+  }
   ctx.fillStyle = oceanGrad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Subtle longitude & latitude graticule lines
-  ctx.strokeStyle = 'rgba(14, 165, 233, 0.08)';
+  ctx.strokeStyle = isDark ? 'rgba(14, 165, 233, 0.08)' : 'rgba(0, 0, 0, 0.06)';
   ctx.lineWidth = 1;
   // Latitudes
   for (let lat = -80; lat <= 80; lat += 20) {
@@ -58,12 +65,11 @@ function createProceduralEarthTexture(): THREE.CanvasTexture {
     ctx.stroke();
   }
 
-  // Draw stylized continent landmass silhouettes (Mercator to equirectangular representation)
-  ctx.fillStyle = '#0F2342';
-  ctx.strokeStyle = '#1E4070';
+  // Draw stylized continent landmass silhouettes
+  ctx.fillStyle = isDark ? '#0F2342' : '#ffffff';
+  ctx.strokeStyle = isDark ? '#1E4070' : '#94a3b8';
   ctx.lineWidth = 2;
 
-  // Approximate major landmass polygons for high-tech holographic appearance
   const drawPoly = (points: [number, number][]) => {
     ctx.beginPath();
     points.forEach(([lng, lat], i) => {
@@ -98,13 +104,8 @@ function createProceduralEarthTexture(): THREE.CanvasTexture {
   ]);
   // Africa
   drawPoly([
-    [-15, 32], [10, 37], [32, 32], [50, 12], [42, -5], [35, -25], 
-    [20, -35], [15, -30], [10, 0], [-15, 12], [-15, 32]
-  ]);
-  // Eurasia / Asia
-  drawPoly([
-    [30, 45], [60, 40], [80, 35], [105, 22], [120, 25], [130, 40], 
-    [140, 55], [170, 65], [100, 75], [60, 70], [40, 60]
+    [-15, 30], [10, 37], [30, 32], [45, 12], [50, 10], [40, -10], 
+    [30, -32], [20, -35], [15, -30], [10, 5], [-15, 12]
   ]);
   // Pakistan & Indus Basin
   drawPoly([[61, 25], [68, 24], [73, 31], [75, 36], [70, 36], [61, 28]]);
@@ -118,21 +119,19 @@ function createProceduralEarthTexture(): THREE.CanvasTexture {
     [135, -35], [115, -32]
   ]);
 
-  // Electrical grid circuit network glow lines across landmasses
-  ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
-  ctx.lineWidth = 1.5;
-  const connections: [[number, number], [number, number]][] = [
-    [[-2.5, 54.5], [2.2, 46.6]],   // UK to France
-    [[-2.5, 54.5], [9.5, 60.5]],   // UK to Norway
-    [[10.4, 51.1], [9.5, 60.5]],   // Germany to Norway
-    [[2.2, 46.6], [10.4, 51.1]],   // France to Germany
-    [[-119.4, 36.7], [-99.9, 31.9]], // CAISO to ERCOT
-    [[-99.9, 31.9], [-77.5, 39.8]],  // ERCOT to PJM
+  // Major continental grid connections
+  ctx.strokeStyle = isDark ? 'rgba(6, 182, 212, 0.45)' : 'rgba(0, 113, 227, 0.35)';
+  ctx.lineWidth = 2.5;
+  const connections: [number, number][][] = [
+    [[-4, 55], [2, 48]],
+    [[2, 48], [10, 51]],
+    [[10, 51], [10, 60]],
+    [[-122, 37], [-99.9, 31.9]],
+    [[-99.9, 31.9], [-77.5, 39.8]],
     [[69.35, 30.38], [78.96, 20.59]], // Pakistan to India
     [[69.35, 30.38], [61.0, 36.0]],   // Pakistan CASA-1000 Corridor
     [[78.96, 20.59], [103.82, 1.35]], // India to ASEAN Grid
     [[103.82, 1.35], [139.7, 35.6]],  // Singapore to Japan
-    [[151.2, -33.8], [139.7, 35.6]], // APAC line
   ];
 
   connections.forEach(([p1, p2]) => {
@@ -157,15 +156,16 @@ function createCountryLabelSprite(
   country: string,
   regionName: string,
   metricText: string,
-  colorHexStr: string
+  colorHexStr: string,
+  isDark: boolean
 ): THREE.Sprite {
   const canvas = document.createElement('canvas');
   canvas.width = 440;
   canvas.height = 110;
   const ctx = canvas.getContext('2d')!;
 
-  // Translucent dark capsule background with glowing border matching the active metric
-  ctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+  // Background
+  ctx.fillStyle = isDark ? 'rgba(2, 6, 23, 0.92)' : 'rgba(255, 255, 255, 0.95)';
   ctx.strokeStyle = colorHexStr;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
@@ -173,28 +173,28 @@ function createCountryLabelSprite(
   ctx.fill();
   ctx.stroke();
 
-  // Subtle interior glow line
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  // Interior border
+  ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.roundRect(12, 12, canvas.width - 24, canvas.height - 24, 18);
   ctx.stroke();
 
-  // Render Country Name & Flag (Big, bold, and high-contrast)
-  ctx.font = 'bold 32px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillStyle = '#FFFFFF';
+  // Render Country Name & Flag (Apple system font)
+  ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+  ctx.fillStyle = isDark ? '#FFFFFF' : '#1D1D1F';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText(`${flag}  ${country}`, 24, 20);
 
   // Render Metric Value with colored badge text
-  ctx.font = 'bold 20px "JetBrains Mono", monospace';
+  ctx.font = 'bold 20px "SF Mono", monospace';
   ctx.fillStyle = colorHexStr;
   ctx.fillText(metricText, 24, 66);
 
   // Region / Operator identifier
-  ctx.font = '500 18px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillStyle = '#94A3B8';
+  ctx.font = '500 17px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+  ctx.fillStyle = isDark ? '#94A3B8' : '#86868B';
   const metricWidth = ctx.measureText(metricText).width;
   ctx.fillText(`· ${regionName.split(' ')[0]}`, 24 + metricWidth + 10, 67);
 
@@ -215,6 +215,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   regions,
   selectedRegionId,
   metricView,
+  isDarkMode = true,
   onSelectRegion,
   onOpenObservatory,
 }) => {
@@ -222,22 +223,21 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   const [autoRotate, setAutoRotate] = useState<boolean>(true);
   const [hoveredRegion, setHoveredRegion] = useState<GridRegion | null>(null);
 
-  // Mutable refs for Three.js render loop to avoid teardowns
   const sceneRef = useRef<THREE.Scene | null>(null);
   const globeRef = useRef<THREE.Group | null>(null);
+  const atmosMeshRef = useRef<THREE.Mesh | null>(null);
   const pinsGroupRef = useRef<THREE.Group | null>(null);
   const arcsGroupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
-  const rotationVelocityRef = useRef({ x: 0, y: 0.0015 });
+  const rotationVelocityRef = useRef({ x: 0, y: 0.0018 });
   const autoRotateRef = useRef(autoRotate);
   autoRotateRef.current = autoRotate;
 
   const GLOBE_RADIUS = 5.0;
 
-  // Helper: color for active metric
   const getMetricHex = (r: GridRegion) => {
     if (metricView === 'carbon') {
       if (r.carbonIntensity <= 50) return 0x10B981; // emerald
@@ -251,29 +251,24 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       if (r.priceInUsdPerMwh <= 85) return 0xF59E0B;
       return 0xEF4444;
     }
-    // Clean
     if (r.cleanEnergyPercentage >= 80) return 0x10B981;
     if (r.cleanEnergyPercentage >= 50) return 0x06B6D4;
     return 0xF59E0B;
   };
 
-  // Initialize Three.js Scene
   useEffect(() => {
     if (!mountRef.current) return;
     const container = mountRef.current;
     const width = container.clientWidth || 960;
     const height = container.clientHeight || 560;
 
-    // 1. Scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // 2. Camera
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 2, 13);
     cameraRef.current = camera;
 
-    // 3. WebGL Renderer
     const isHeadless = navigator.webdriver || /HeadlessChrome/i.test(navigator.userAgent);
     const renderer = new THREE.WebGLRenderer({
       antialias: !isHeadless,
@@ -287,11 +282,10 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 4. Lighting Rig
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, isDarkMode ? 0.9 : 1.2);
     scene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0x06B6D4, 1.4);
+    const dirLight1 = new THREE.DirectionalLight(isDarkMode ? 0x06B6D4 : 0x0071E3, 1.4);
     dirLight1.position.set(12, 10, 15);
     scene.add(dirLight1);
 
@@ -299,8 +293,8 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     dirLight2.position.set(-15, -8, -10);
     scene.add(dirLight2);
 
-    // 5. Starfield Background Particle Sphere
-    const starCount = 600;
+    // Particle Sphere
+    const starCount = isDarkMode ? 600 : 250;
     const starGeo = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount * 3; i += 3) {
@@ -315,44 +309,45 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     const starMat = new THREE.PointsMaterial({
-      color: 0x64748B,
+      color: isDarkMode ? 0x64748B : 0xCBD5E1,
       size: 0.6,
       transparent: true,
-      opacity: 0.6,
+      opacity: isDarkMode ? 0.6 : 0.4,
     });
     const starPoints = new THREE.Points(starGeo, starMat);
     scene.add(starPoints);
 
-    // 6. Globe Master Group
+    // Globe Master Group
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
     globeRef.current = globeGroup;
 
-    // 6A. Base Earth Sphere
-    const earthTexture = createProceduralEarthTexture();
+    // Earth Sphere
+    const earthTexture = createProceduralEarthTexture(isDarkMode);
     const globeGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64);
     const globeMat = new THREE.MeshStandardMaterial({
       map: earthTexture,
       roughness: 0.7,
       metalness: 0.2,
-      emissive: new THREE.Color(0x030B18),
-      emissiveIntensity: 0.4,
+      emissive: new THREE.Color(isDarkMode ? 0x030B18 : 0xf1f5f9),
+      emissiveIntensity: isDarkMode ? 0.4 : 0.2,
     });
     const globeMesh = new THREE.Mesh(globeGeo, globeMat);
     globeGroup.add(globeMesh);
 
-    // 6B. Glowing Atmospheric Rim Layer
+    // Glowing Atmospheric Rim Layer with subtle breathing
     const atmosGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.025, 48, 48);
     const atmosMat = new THREE.MeshBasicMaterial({
-      color: 0x06B6D4,
+      color: isDarkMode ? 0x06B6D4 : 0x0071E3,
       transparent: true,
-      opacity: 0.12,
+      opacity: isDarkMode ? 0.15 : 0.08,
       side: THREE.BackSide,
     });
     const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
     globeGroup.add(atmosMesh);
+    atmosMeshRef.current = atmosMesh;
 
-    // 7. Groups for Pins and Arcs
+    // Groups for Pins and Arcs
     const pinsGroup = new THREE.Group();
     globeGroup.add(pinsGroup);
     pinsGroupRef.current = pinsGroup;
@@ -361,7 +356,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     globeGroup.add(arcsGroup);
     arcsGroupRef.current = arcsGroup;
 
-    // 8. Event Handlers: Drag-to-Rotate Globe
+    // Event Handlers: Drag-to-Rotate Globe
     const onMouseDown = (e: MouseEvent) => {
       isDraggingRef.current = true;
       previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
@@ -375,7 +370,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       globeRef.current.rotation.y += deltaX * 0.005;
       globeRef.current.rotation.x += deltaY * 0.005;
 
-      // Constrain vertical pitch
       globeRef.current.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, globeRef.current.rotation.x));
 
       rotationVelocityRef.current = { x: deltaY * 0.001, y: deltaX * 0.002 };
@@ -419,7 +413,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     domElement.addEventListener('touchmove', onTouchMove);
     domElement.addEventListener('touchend', onTouchEnd);
 
-    // Resize Handler
     const handleResize = () => {
       if (!container || !rendererRef.current || !cameraRef.current) return;
       const newW = container.clientWidth;
@@ -432,21 +425,28 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
 
     // Animation Render Loop
     let animationFrameId: number;
+    let clock = 0;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      clock += 0.015;
 
       if (globeRef.current) {
         if (!isDraggingRef.current) {
           if (autoRotateRef.current) {
-            globeRef.current.rotation.y += 0.002;
+            globeRef.current.rotation.y += 0.0022; // Smooth continuous rotation
           } else {
-            // Apply subtle inertia decay
             globeRef.current.rotation.y += rotationVelocityRef.current.y;
             globeRef.current.rotation.x += rotationVelocityRef.current.x;
             rotationVelocityRef.current.x *= 0.95;
             rotationVelocityRef.current.y *= 0.95;
           }
         }
+      }
+
+      // Breathing atmospheric rim animation
+      if (atmosMeshRef.current) {
+        const breathingScale = 1.025 + Math.sin(clock * 1.5) * 0.006;
+        atmosMeshRef.current.scale.set(breathingScale, breathingScale, breathingScale);
       }
 
       // Update country label visibility and opacity based on angle facing camera
@@ -456,7 +456,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         pinsGroupRef.current.children.forEach((child) => {
           if (child.userData?.isCountryLabel && child instanceof THREE.Sprite) {
             child.getWorldPosition(tempPos);
-            // Facing dot product between marker normal and camera vector
             const facingDot = tempPos.normalize().dot(camPos.clone().normalize());
             if (facingDot > 0.08) {
               child.visible = true;
@@ -468,14 +467,11 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         });
       }
 
-      // Rotate starfield slowly for cosmic atmosphere
       starPoints.rotation.y -= 0.0003;
-
       renderer.render(scene, camera);
     };
     animate();
 
-    // Cleanup on unmount
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
@@ -495,7 +491,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       starMat.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [isDarkMode]);
 
   // Update Region Pins and Interconnector 3D Arcs when regions or metric changes
   useEffect(() => {
@@ -503,7 +499,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     const pinsGroup = pinsGroupRef.current;
     const arcsGroup = arcsGroupRef.current;
 
-    // Clear previous children
     while (pinsGroup.children.length > 0) {
       const child = pinsGroup.children[0] as THREE.Mesh;
       if (child.geometry) child.geometry.dispose();
@@ -524,7 +519,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       const colorHex = getMetricHex(region);
       const isSelected = region.id === selectedRegionId;
 
-      // Pin Stalk (Line/Cylinder from surface to elevated point)
       const stalkGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.35, 8);
       const stalkMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.8 });
       const stalkMesh = new THREE.Mesh(stalkGeo, stalkMat);
@@ -532,7 +526,7 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       stalkMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), surfacePos.clone().normalize());
       pinsGroup.add(stalkMesh);
 
-      // Pin Head (Glowing Beacon Sphere)
+      // Pin Head
       const beaconGeo = new THREE.SphereGeometry(isSelected ? 0.22 : 0.14, 16, 16);
       const beaconMat = new THREE.MeshStandardMaterial({
         color: colorHex,
@@ -572,22 +566,26 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
         region.country,
         region.name,
         metricText,
-        colorHexStr
+        colorHexStr,
+        isDarkMode
       );
       countryLabel.position.copy(latLngToVector3(lat, lng, GLOBE_RADIUS + 0.65));
       countryLabel.userData = { regionId: region.id, region, isCountryLabel: true };
       pinsGroup.add(countryLabel);
     });
 
-    // Add 3D Great-Circle Interconnector Arcs
+    // Add 3D Great-Circle Interconnector Arcs (Including Pakistan & Asian Corridors)
     const regionMap = new Map(regions.map(r => [r.id, r]));
     const interconnectorPairs: [string, string][] = [
-      ['gb-uk', 'fr-rte'],       // UK to France
-      ['gb-uk', 'nordic-pool'],  // UK to Norway
-      ['de-smard', 'nordic-pool'], // Germany to Norway
-      ['fr-rte', 'de-smard'],    // France to Germany
-      ['us-caiso', 'us-ercot'],  // CAISO to Texas
-      ['us-ercot', 'us-pjm'],    // Texas to PJM
+      ['gb-uk', 'fr-rte'],         // UK to France
+      ['gb-uk', 'no-statnett'],    // UK to Norway
+      ['de-transnet', 'no-statnett'], // Germany to Norway
+      ['fr-rte', 'de-transnet'],   // France to Germany
+      ['fr-rte', 'es-ree'],        // France to Spain
+      ['us-caiso', 'us-ercot'],    // California to Texas
+      ['pk-ntdc', 'in-posoco'],    // Pakistan to India
+      ['in-posoco', 'sg-ema'],     // India to Singapore
+      ['sg-ema', 'jp-tepco'],      // Singapore to Japan
     ];
 
     interconnectorPairs.forEach(([idA, idB]) => {
@@ -598,7 +596,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       const pA = latLngToVector3(regA.coordinates.lat, regA.coordinates.lng, GLOBE_RADIUS);
       const pB = latLngToVector3(regB.coordinates.lat, regB.coordinates.lng, GLOBE_RADIUS);
 
-      // Midpoint elevated above sphere to form a smooth parabolic 3D arc
       const mid = pA.clone().add(pB).multiplyScalar(0.5);
       const distance = pA.distanceTo(pB);
       const arcHeight = GLOBE_RADIUS + Math.min(2.5, Math.max(0.4, distance * 0.35));
@@ -608,17 +605,16 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
       const points = curve.getPoints(36);
       const curveGeo = new THREE.BufferGeometry().setFromPoints(points);
       const curveMat = new THREE.LineBasicMaterial({
-        color: 0x06B6D4,
+        color: isDarkMode ? 0x06B6D4 : 0x0071E3,
         transparent: true,
-        opacity: 0.65,
+        opacity: isDarkMode ? 0.75 : 0.6,
         linewidth: 2,
       });
       const arcLine = new THREE.Line(curveGeo, curveMat);
       arcsGroup.add(arcLine);
     });
-  }, [regions, selectedRegionId, metricView]);
+  }, [regions, selectedRegionId, metricView, isDarkMode]);
 
-  // Raycasting Click & Hover Detection
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!rendererRef.current || !cameraRef.current || !pinsGroupRef.current) return;
     const rect = rendererRef.current.domElement.getBoundingClientRect();
@@ -641,7 +637,6 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
     }
   };
 
-  // Smoothly rotate globe to face selected region
   const focusOnRegion = (reg: GridRegion) => {
     if (!globeRef.current) return;
     const { lat, lng } = reg.coordinates;
@@ -656,51 +651,39 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
   const activeRegion = hoveredRegion || regions.find(r => r.id === selectedRegionId) || regions[0];
 
   return (
-    <div className="relative rounded-2xl bg-slate-950 border border-slate-800/90 overflow-hidden shadow-2xl">
-      {/* 3D WebGL Canvas Container */}
+    <div className={`relative rounded-3xl border transition-colors duration-300 overflow-hidden shadow-2xl ${
+      isDarkMode 
+        ? 'bg-[#000000] border-white/[0.12]' 
+        : 'bg-[#f5f5f7] border-black/[0.08]'
+    }`}>
+      {/* 3D WebGL Canvas */}
       <div
         ref={mountRef}
         onClick={handleCanvasClick}
         className="w-full h-[540px] cursor-grab active:cursor-grabbing select-none"
       />
 
-      {/* Floating 3D Navigation Controls Toolbar (Bottom Center Dock adhering to Three.js design directive) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl z-20">
+      {/* Floating 3D Navigation Controls Toolbar (Apple Style Dock) */}
+      <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-full border backdrop-blur-xl shadow-2xl z-20 ${
+        isDarkMode 
+          ? 'bg-[#1c1c1e]/90 border-white/[0.12] text-[#f5f5f7]' 
+          : 'bg-white/90 border-black/[0.08] text-[#1d1d1f]'
+      }`}>
         {/* Auto-rotate Toggle */}
         <button
           onClick={() => setAutoRotate(!autoRotate)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-            autoRotate ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'text-slate-400 hover:text-white'
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 ${
+            autoRotate 
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
-          title="Toggle auto-rotation"
+          title="Toggle smooth globe rotation"
         >
           {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           <span className="hidden sm:inline">{autoRotate ? 'Rotating' : 'Paused'}</span>
         </button>
 
-        <div className="w-px h-4 bg-slate-700" />
-
-        {/* Quick Focus: UK Grid */}
-        <button
-          onClick={() => {
-            const uk = regions.find(r => r.id === 'gb-uk');
-            if (uk) { onSelectRegion('gb-uk'); focusOnRegion(uk); }
-          }}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
-        >
-          <span>🇬🇧 Focus UK</span>
-        </button>
-
-        {/* Quick Focus: Europe */}
-        <button
-          onClick={() => {
-            const nor = regions.find(r => r.id === 'nordic-pool');
-            if (nor) { onSelectRegion('nordic-pool'); focusOnRegion(nor); }
-          }}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
-        >
-          <span>🇳🇴 Nordics</span>
-        </button>
+        <div className="w-px h-4 bg-current opacity-20" />
 
         {/* Quick Focus: Pakistan */}
         <button
@@ -708,7 +691,9 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
             const pk = regions.find(r => r.id === 'pk-ntdc');
             if (pk) { onSelectRegion('pk-ntdc'); focusOnRegion(pk); }
           }}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
+          className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+            isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'
+          }`}
         >
           <span>🇵🇰 Pakistan</span>
         </button>
@@ -719,117 +704,119 @@ export const GlobeView: React.FC<GlobeViewProps> = ({
             const ind = regions.find(r => r.id === 'in-posoco');
             if (ind) { onSelectRegion('in-posoco'); focusOnRegion(ind); }
           }}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
+          className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+            isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'
+          }`}
         >
           <span>🇮🇳 India</span>
         </button>
 
-        {/* Quick Focus: US ISOs */}
+        {/* Quick Focus: UK Grid */}
+        <button
+          onClick={() => {
+            const uk = regions.find(r => r.id === 'gb-uk');
+            if (uk) { onSelectRegion('gb-uk'); focusOnRegion(uk); }
+          }}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+            isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'
+          }`}
+        >
+          <span>🇬🇧 UK</span>
+        </button>
+
+        {/* Quick Focus: California */}
         <button
           onClick={() => {
             const ca = regions.find(r => r.id === 'us-caiso');
             if (ca) { onSelectRegion('us-caiso'); focusOnRegion(ca); }
           }}
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
+          className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+            isDarkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'
+          }`}
         >
           <span>🇺🇸 California</span>
         </button>
       </div>
 
-      {/* Floating Selected Region Telemetry HUD (Top Left) */}
+      {/* Floating Selected Region Telemetry HUD (Apple Glass Card) */}
       {activeRegion && (
-        <div className="absolute top-4 left-4 p-4 rounded-xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-md shadow-2xl max-w-sm w-full z-20 transition-all">
-          <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-800">
+        <div className={`absolute top-4 left-4 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl max-w-sm w-full z-20 transition-all ${
+          isDarkMode 
+            ? 'bg-[#1c1c1e]/90 border-white/[0.12] text-[#f5f5f7]' 
+            : 'bg-white/90 border-black/[0.08] text-[#1d1d1f]'
+        }`}>
+          <div className="flex items-start justify-between gap-3 pb-2 border-b border-current border-opacity-10">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{activeRegion.flag}</span>
                 <div>
-                  <h3 className="text-sm font-bold text-white">{activeRegion.name}</h3>
-                  <div className="text-[11px] text-slate-400 font-mono">{activeRegion.gridOperator}</div>
+                  <h3 className="text-sm font-bold tracking-tight">{activeRegion.name}</h3>
+                  <div className={`text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                    {activeRegion.gridOperator}
+                  </div>
                 </div>
               </div>
             </div>
             <button
               onClick={() => onOpenObservatory(activeRegion.id)}
-              className="px-2.5 py-1 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded flex items-center gap-1 transition-colors whitespace-nowrap"
+              className={`px-3 py-1 text-xs font-semibold rounded-full flex items-center gap-1 transition-all active:scale-95 shadow-sm ${
+                isDarkMode 
+                  ? 'bg-white text-black hover:bg-slate-200' 
+                  : 'bg-black text-white hover:bg-slate-800'
+              }`}
             >
-              <span>Open</span>
+              <span>Inspect</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
           {/* Quick Metrics Grid */}
           <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <div className="p-2 rounded bg-slate-950/80 border border-slate-800">
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Carbon Intensity</div>
-              <div className="font-mono text-sm font-bold text-emerald-400 mt-0.5">
-                {activeRegion.carbonIntensity} <span className="text-[10px] text-slate-400">gCO2/kWh</span>
+            <div className={`p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/[0.06]' : 'bg-[#f5f5f7] border-black/[0.04]'}`}>
+              <div className={`text-[10px] uppercase font-semibold tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Carbon Intensity
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Rating: {activeRegion.carbonRating}</div>
+              <div className="font-mono text-sm font-bold text-emerald-400 mt-0.5">
+                {activeRegion.carbonIntensity} <span className="text-[10px] font-normal font-sans opacity-70">gCO2/kWh</span>
+              </div>
             </div>
 
-            <div className="p-2 rounded bg-slate-950/80 border border-slate-800">
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Wholesale Price</div>
+            <div className={`p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/[0.06]' : 'bg-[#f5f5f7] border-black/[0.04]'}`}>
+              <div className={`text-[10px] uppercase font-semibold tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Wholesale Price
+              </div>
               <div className="font-mono text-sm font-bold text-cyan-400 mt-0.5">
                 {formatCurrency(activeRegion.wholesalePricePerMwh, activeRegion.currencySymbol)}
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                ≈ ${activeRegion.priceInUsdPerMwh} / MWh
-              </div>
             </div>
 
-            <div className="p-2 rounded bg-slate-950/80 border border-slate-800">
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">System Frequency</div>
+            <div className={`p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/[0.06]' : 'bg-[#f5f5f7] border-black/[0.04]'}`}>
+              <div className={`text-[10px] uppercase font-semibold tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Grid Frequency
+              </div>
               <div className="font-mono text-sm font-bold text-amber-400 mt-0.5">
                 {formatFrequency(activeRegion.systemFrequencyHz)}
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Nominal: {activeRegion.nominalFrequencyHz}.00 Hz</div>
             </div>
 
-            <div className="p-2 rounded bg-slate-950/80 border border-slate-800">
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Current Demand</div>
-              <div className="font-mono text-sm font-bold text-white mt-0.5">
-                {formatPower(activeRegion.currentDemandMw)}
+            <div className={`p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/[0.06]' : 'bg-[#f5f5f7] border-black/[0.04]'}`}>
+              <div className={`text-[10px] uppercase font-semibold tracking-wider ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+                Current Load
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">
-                Clean: {activeRegion.cleanEnergyPercentage}%
+              <div className="font-mono text-sm font-bold text-emerald-400 mt-0.5">
+                {formatPower(activeRegion.currentDemandMw)}
               </div>
             </div>
           </div>
 
           <div className="mt-2.5 text-[10px] text-cyan-400 flex items-center justify-between font-mono">
             <span>Drag globe to rotate · Scroll to zoom</span>
-            <span className="text-slate-500">Lat: {activeRegion.coordinates.lat}°</span>
+            <span className={`opacity-60 ${isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'}`}>
+              Lat: {activeRegion.coordinates.lat}°
+            </span>
           </div>
         </div>
       )}
-
-      {/* Metric Scale Legend (Top Right) */}
-      <div className="absolute top-4 right-4 p-3 rounded-lg bg-slate-950/90 border border-slate-800 text-xs hidden sm:block z-20">
-        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-          {metricView === 'carbon' && 'Carbon Scale (gCO2/kWh)'}
-          {metricView === 'price' && 'Price Scale ($/MWh)'}
-          {metricView === 'clean' && 'Clean Power Share'}
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[11px]">
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>Optimal</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-            <span>Low</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Moderate</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-            <span>High</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

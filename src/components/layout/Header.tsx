@@ -1,9 +1,7 @@
 import React from 'react';
-import { Activity, Globe, Zap, Database, Key } from 'lucide-react';
+import { Activity, Globe, Zap, Database, Key, Sun, Moon, Map } from 'lucide-react';
 
-export type ActiveTab = 'map' | 'observatory' | 'act' | 'schema' | 'credentials';
-
-export type AppTheme = 'uk_grid' | 'cyber' | 'nordic';
+export type ActiveTab = 'map' | 'observatory' | 'ecogrid' | 'act' | 'schema' | 'credentials';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -11,8 +9,8 @@ interface HeaderProps {
   selectedRegionName?: string;
   isLiveTicking: boolean;
   onToggleLiveTick: () => void;
-  currentTheme: AppTheme;
-  onThemeChange: (theme: AppTheme) => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,118 +18,160 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   isLiveTicking,
   onToggleLiveTick,
-  currentTheme,
-  onThemeChange,
+  isDarkMode,
+  onToggleDarkMode,
 }) => {
   return (
-    <header className="flex items-center justify-between gap-8 px-6 py-3.5 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
-      {/* Zone 1: Single text element wordmark */}
+    <header className={`flex items-center justify-between gap-6 px-6 py-3.5 border-b sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-[#000000]/80 border-white/[0.08] text-[#f5f5f7]' 
+        : 'bg-[#ffffff]/80 border-black/[0.06] text-[#1d1d1f]'
+    }`}>
+      {/* Zone 1: Apple Cupertino Wordmark */}
       <a 
         href="#top" 
         onClick={(e) => { e.preventDefault(); onTabChange('map'); }}
-        className="text-lg font-bold tracking-tight text-white flex items-center gap-2.5 whitespace-nowrap shrink-0 hover:text-emerald-400 transition-colors"
+        className="text-base font-semibold tracking-tight flex items-center gap-2.5 whitespace-nowrap shrink-0 group"
       >
-        <span className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-          <Zap className="w-4 h-4" />
+        <span className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+          isDarkMode 
+            ? 'bg-white/10 text-white group-hover:bg-cyan-500/20 group-hover:text-cyan-400' 
+            : 'bg-black/5 text-black group-hover:bg-cyan-500/10 group-hover:text-cyan-600'
+        }`}>
+          <Zap className="w-3.5 h-3.5" />
         </span>
-        <span>VoltGrid Global</span>
+        <span className="font-bold tracking-tight">VoltGrid</span>
+        <span className={`text-[11px] font-normal tracking-normal ${
+          isDarkMode ? 'text-[#a1a1a6]' : 'text-[#86868b]'
+        }`}>
+          Observatory
+        </span>
       </a>
 
-      {/* Zone 2: 4-5 single-line clean text navigation links */}
-      <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
+      {/* Zone 2: Apple clean navigation tabs */}
+      <nav className={`hidden md:flex items-center gap-1 text-xs font-medium p-1 rounded-full border ${
+        isDarkMode 
+          ? 'bg-[#1c1c1e]/60 border-white/[0.08]' 
+          : 'bg-[#f5f5f7] border-black/[0.04]'
+      }`}>
         <button
           onClick={() => onTabChange('map')}
-          className={`flex items-center gap-1.5 py-1 transition-colors whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
             activeTab === 'map' 
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold' 
-              : 'hover:text-white'
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
         >
-          <Globe className="w-4 h-4" />
+          <Globe className="w-3.5 h-3.5" />
           <span>Global Map</span>
         </button>
 
         <button
-          onClick={() => onTabChange('observatory')}
-          className={`flex items-center gap-1.5 py-1 transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'observatory' 
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold' 
-              : 'hover:text-white'
+          onClick={() => onTabChange('ecogrid')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
+            activeTab === 'ecogrid' 
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Map className="w-3.5 h-3.5" />
+          <span>Country Ecogrid</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('observatory')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
+            activeTab === 'observatory' 
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
           <span>Observatory</span>
         </button>
 
         <button
           onClick={() => onTabChange('act')}
-          className={`flex items-center gap-1.5 py-1 transition-colors whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
             activeTab === 'act' 
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold' 
-              : 'hover:text-white'
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
         >
-          <Zap className="w-4 h-4" />
+          <Zap className="w-3.5 h-3.5" />
           <span>Workload Optimizer</span>
         </button>
 
         <button
           onClick={() => onTabChange('schema')}
-          className={`flex items-center gap-1.5 py-1 transition-colors whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
             activeTab === 'schema' 
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold' 
-              : 'hover:text-white'
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
         >
-          <Database className="w-4 h-4" />
-          <span>Database Schema</span>
+          <Database className="w-3.5 h-3.5" />
+          <span>Schema</span>
         </button>
 
         <button
           onClick={() => onTabChange('credentials')}
-          className={`flex items-center gap-1.5 py-1 transition-colors whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
             activeTab === 'credentials' 
-              ? 'text-emerald-400 border-b-2 border-emerald-400 font-semibold' 
-              : 'hover:text-white'
+              ? isDarkMode ? 'bg-[#2c2c2e] text-white shadow-sm font-semibold' : 'bg-white text-black shadow-sm font-semibold'
+              : isDarkMode ? 'text-[#a1a1a6] hover:text-white' : 'text-[#86868b] hover:text-black'
           }`}
         >
-          <Key className="w-4 h-4" />
-          <span>API Vault</span>
+          <Key className="w-3.5 h-3.5" />
+          <span>Vault</span>
         </button>
       </nav>
 
-      {/* Zone 3: 1 primary action + theme selector & live ticker */}
+      {/* Zone 3: Apple Light/Dark Switch + Live Ticker + Quick Action */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Theme Selector */}
-        <select
-          value={currentTheme}
-          onChange={(e) => onThemeChange(e.target.value as AppTheme)}
-          className="hidden sm:block text-xs bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 font-medium"
-          aria-label="Select Grid Theme"
+        
+        {/* Apple Light/Dark Mode Switcher */}
+        <button
+          onClick={onToggleDarkMode}
+          aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          className={`p-2 rounded-full border transition-all flex items-center justify-center ${
+            isDarkMode 
+              ? 'bg-[#1c1c1e] border-white/[0.12] text-amber-300 hover:bg-[#2c2c2e]' 
+              : 'bg-[#f5f5f7] border-black/[0.08] text-slate-700 hover:bg-[#e8e8ed]'
+          }`}
+          title={isDarkMode ? 'Switch to Apple Light Mode' : 'Switch to Apple Dark Mode'}
         >
-          <option value="uk_grid">UK Grid Live (Dark)</option>
-          <option value="cyber">Cyber Phosphor</option>
-          <option value="nordic">Nordic Hydro</option>
-        </select>
+          {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
 
+        {/* Live Stream Telemetry Pill */}
         <button
           onClick={onToggleLiveTick}
           title={isLiveTicking ? 'Pause simulated real-time stream' : 'Resume real-time stream'}
-          className={`text-xs px-2.5 py-1.5 rounded border flex items-center gap-1.5 transition-colors font-mono ${
+          className={`text-xs px-2.5 py-1.5 rounded-full border flex items-center gap-1.5 transition-colors font-mono ${
             isLiveTicking 
-              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-400' 
-              : 'bg-slate-900 border-slate-700 text-slate-400'
+              ? isDarkMode 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : isDarkMode
+                ? 'bg-[#1c1c1e] border-white/[0.1] text-[#a1a1a6]'
+                : 'bg-[#f5f5f7] border-black/[0.08] text-[#86868b]'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${isLiveTicking ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-          <span className="hidden sm:inline">{isLiveTicking ? 'Live Stream Active' : 'Stream Paused'}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${isLiveTicking ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+          <span className="hidden sm:inline">{isLiveTicking ? 'Live Telemetry' : 'Paused'}</span>
         </button>
 
+        {/* Primary CTA */}
         <button
-          onClick={() => onTabChange('act')}
-          className="px-3.5 py-1.5 text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-colors rounded-lg whitespace-nowrap shrink-0"
+          onClick={() => onTabChange('ecogrid')}
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap shadow-sm active:scale-95 ${
+            isDarkMode 
+              ? 'bg-white text-black hover:bg-slate-200' 
+              : 'bg-[#1d1d1f] text-white hover:bg-black'
+          }`}
         >
-          Optimizer
+          View Ecogrid
         </button>
       </div>
     </header>
